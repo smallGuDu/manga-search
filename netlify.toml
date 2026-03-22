@@ -2,7 +2,9 @@
   publish = "public"
   functions = "netlify/functions"
 
-[[redirects]]
-  from = "/stream_search"
-  to = "/.netlify/functions/stream_search"
-  status = 200
+[functions]
+  node_bundler = "esbuild" # 虽然是Python，但这行有时能触发更现代的构建流程
+
+# 强制要求使用 Python 3.x
+[build.environment]
+  PYTHON_VERSION = "3.12"
