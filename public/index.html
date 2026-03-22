@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <title>漫画聚合搜索</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --text-dark: #1e293b;
+        }
+
+        body {
+            font-family: 'PingFang SC', sans-serif;
+            margin: 0;
+            background: #0f172a;
+            color: var(--text-dark);
+            min-height: 100vh;
+        }
+
+        /* 动态轮播背景 */
+        .bg-slider {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background-size: cover;
+            background-position: center;
+            transition: background-image 1.5s ease-in-out;
+            filter: brightness(0.5);
+        }
+
+        /* 顶部毛玻璃搜索区 */
+        .header {
+            padding: 60px 20px;
+            text-align: center;
+            color: white;
+        }
+
+        .search-wrap {
+            max-width: 600px;
+            margin: 20px auto;
+            display: flex;
+            background: var(--glass-bg);
+            padding: 8px;
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .search-wrap input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 10px 20px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        .search-wrap button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .platform-nav {
+            margin-top: 15px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .platform-tag {
+            font-size: 13px;
+            color: #ddd;
+            cursor: pointer;
+            text-decoration: none;
+            padding: 4px 12px;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 20px;
+            transition: 0.3s;
+        }
+
+        .platform-tag:hover { background: var(--primary); border-color: var(--primary); color: white; }
+
+        /* 内容布局 */
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto 50px;
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 30px;
+            padding: 0 20px;
+        }
+
+        .results-grid { display: grid; gap: 20px; }
+
+        /* 卡片设计 */
+        .card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            display: flex;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            transition: 0.3s;
+        }
+
+        .card:hover { transform: translateY(-5px); }
+
+        .cover-box {
+            width: 150px; min-width: 150px; height: 200px;
+            background: #eee;
+        }
+
+        .cover-box img { width: 100%; height: 100%; object-fit: cover; }
+
+        .info-box { padding: 20px; flex: 1; position: relative; }
+        .info-box h3 { margin: 0 0 10px; font-size: 18px; color: #1e293b; }
+        .info-box h3 a { text-decoration: none; color: inherit; }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-right: 10px;
+        }
+        .badge-jm { background: #ff7e00; color: white; }
+        .badge-eh { background: #5e4b8d; color: white; }
+
+        .meta-text { font-size: 13px; color: #64748b; margin: 4px 0; }
+
+        .toggle-chapters {
+            margin-top: 10px;
+            color: var(--primary);
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .chapters-panel {
+            display: none;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 8px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #cbd5e1;
+        }
+
+        /* 侧边栏小组件 */
+        .widget {
+            background: var(--glass-bg);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+        .widget h4 { margin-top: 0; border-left: 4px solid var(--primary); padding-left: 10px; }
+        .widget ul { padding-left: 20px; font-size: 14px; color: #475569; }
+
+        /* 返回顶部 */
+        #backToTop {
+            position: fixed;
+            bottom: 30px; right: 30px;
+            width: 50px; height: 50px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            z-index: 100;
+        }
+
+        @media (max-width: 768px) {
+            .main-container { grid-template-columns: 1fr; }
+            .sidebar { order: -1; }
+            .cover-box { width: 110px; min-width: 110px; height: 150px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="bg-slider" id="bgSlider"></div>
+
+<div class="header">
+    <h1>📚 漫画聚合搜索</h1>
+    <div class="search-wrap">
+        <input type="text" id="search" placeholder="输入漫画名称，发现新世界...">
+        <button onclick="search()">探索</button>
+    </div>
+    <div class="platform-nav">
+        <span onclick="jumpSearch('jm')" class="platform-tag">禁漫天堂 (JM)</span>
+        <span onclick="jumpSearch('eh')" class="platform-tag">E-Hentai</span>
+    </div>
+</div>
+
+<div class="main-container">
+    <div class="results-grid" id="results">
+        <div style="text-align: center; color: white; padding-top: 50px;">待命中...请输入关键词</div>
+    </div>
+
+    <div class="sidebar">
+        <div class="widget">
+            <h4>公告板</h4>
+            <ul>
+                <li>欢迎使用漫画聚搜~</li>
+                <li>现在可以支持没有加速器搜素，但如果想要观看还是要开加速器滴，如果不会加速器请访问<a href="https://dh.soliar.top">导航</a></li>
+                <li>目前只有JM和Ehentai源，之后会添加更多</li>
+                <li>有什么建议+q群971124578或<a href="https://waline-chat-seven.vercel.app/">留言</a></li>
+                <li>重要:如果你聚搜正常的漫画的话，那么我非常推荐comic这款软件，只需要导入订阅源就可以</li><br>
+                <script src="//cdn.busuanzi.cc/busuanzi/3.6.9/busuanzi.min.js" defer></script>
+                    今日总访问量 <span id="busuanzi_today_pv">加载中...</span> 次<br>
+                    今日总访客数 <span id="busuanzi_today_uv">加载中...</span> 人<br>
+                    本站总访问量 <span id="busuanzi_site_pv">加载中...</span> 次<br>
+                    本站总访客数 <span id="busuanzi_site_uv">加载中...</span> 人<br>
+                    本页总阅读量 <span id="busuanzi_page_pv">加载中...</span> 次<br>
+                    本页总访客数 <span id="busuanzi_page_uv">加载中...</span> 人<br>
+                <li>网页计数由<a href="https://www.busuanzi.cc/">不蒜子</a>提供</li>
+            </ul>
+        </div>
+        <div class="widget">
+            <h4>使用须知</h4>
+            <div style="font-size: 13px; color: #64748b;">
+                本工具仅作聚合展示，不存储任何资源。点击标题可跳转至原站阅读。
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="backToTop" onclick="scrollToTop()">▲</div>
+
+<script>
+    // --- 轮播背景逻辑 ---
+    const bgImages = [
+        'https://api.illlights.com/v1/img',
+        'https://api.illlights.com/v1/img?',
+        'https://api.illlights.com/v1/img??',
+        'https://api.illlights.com/v1/img???'
+    ];
+    let bgIndex = 0;
+    const bgSlider = document.getElementById('bgSlider');
+    
+    function changeBg() {
+        bgSlider.style.backgroundImage = `url('${bgImages[bgIndex]}')`;
+        bgIndex = (bgIndex + 1) % bgImages.length;
+    }
+    setInterval(changeBg, 5000);
+    changeBg();
+
+    // --- 搜索逻辑 ---
+    let source = null;
+
+    async function search() {
+    const keyword = document.getElementById("search").value;
+    if (!keyword) return;
+
+    const container = document.getElementById("results");
+    container.innerHTML = `<div style="text-align:center; color:white; padding:40px;">🔍 穿越次元壁中 (约需5-10秒)...</div>`;
+
+    try {
+        // Netlify 下直接请求同域名的接口
+        const response = await fetch("/stream_search?search=" + encodeURIComponent(keyword));
+        const data = await response.json();
+        
+        container.innerHTML = "";
+        if (data.length === 0) {
+            container.innerHTML = "<div style='color:white; text-align:center;'>未找到结果</div>";
+        } else {
+            data.forEach(item => renderCard(item));
+        }
+    } catch (err) {
+        container.innerHTML = "<div style='color:red; text-align:center;'>搜索出错，请稍后再试</div>";
+    }
+}
+
+    function renderCard(item) {
+        // 渲染章节
+        let chaptersHTML = "";
+        if (item.photos && item.photos.length > 0) {
+            item.photos.slice(0, 12).forEach(p => {
+                chaptersHTML += `<div style="font-size:11px; background:#f1f5f9; padding:4px; border-radius:3px;">${p.name}</div>`;
+            });
+        }
+
+        const html = `
+            <div class="card">
+                <div class="cover-box">
+                    <img src="${item.cover}" loading="lazy" onerror="this.src='https://via.placeholder.com/150x200?text=Load+Error'">
+                </div>
+                <div class="info-box">
+                    <span class="badge badge-${item.platform}">${item.platform}</span>
+                    <h3><a href="${item.url}" target="_blank">${item.title}</a></h3>
+                    <div class="meta-text">👤 作者：${item.author || '未知'}</div>
+                    <div class="meta-text">📅 更新：${item.update_date}</div>
+                    <div class="meta-text" style="color:var(--primary)">ID: ${item.id}</div>
+                    
+                    <div class="toggle-chapters" onclick="toggle('${item.id}')">查看章节预览 (${item.photos ? item.photos.length : 0})</div>
+                    <div class="chapters-panel" id="p${item.id}">
+                        ${chaptersHTML || '暂无章节数据'}
+                    </div>
+                </div>
+            </div>
+        `;
+        document.getElementById("results").insertAdjacentHTML("beforeend", html);
+    }
+
+    function toggle(id) {
+        let el = document.getElementById("p" + id);
+        el.style.display = (el.style.display === "grid") ? "none" : "grid";
+    }
+
+    // --- 辅助功能 ---
+    function jumpSearch(p) {
+        const k = document.getElementById("search").value;
+        if (!k) return alert("输入关键词再跳转哦");
+        const urls = {
+            'jm': `https://18comic.vip/search/photos?search_query=${encodeURIComponent(k)}`,
+            'eh': `https://e-hentai.org/?f_search=${encodeURIComponent(k)}`
+        };
+        window.open(urls[p], '_blank');
+    }
+
+    window.onscroll = function() {
+        const btn = document.getElementById("backToTop");
+        btn.style.display = (document.documentElement.scrollTop > 300) ? "flex" : "none";
+    };
+
+    function scrollToTop() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+</script>
+
+</body>
+</html>

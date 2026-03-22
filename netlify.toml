@@ -1,0 +1,8 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/stream_search"
+  to = "/.netlify/functions/stream_search"
+  status = 200
